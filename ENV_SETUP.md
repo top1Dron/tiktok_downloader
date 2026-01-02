@@ -57,19 +57,28 @@ poetry run python api_server.py
 
 ## Docker/Docker Compose
 
-For Docker deployments, set the API key in `docker-compose.yml`:
+**Important:** Docker Compose now requires a `.env` file. All environment variables are read from `.env` file.
 
-```yaml
-services:
-  api:
-    environment:
-      - API_KEY=${API_KEY:-your-secret-api-key-change-this}
-```
+1. **Create `.env` file** in the same directory as `docker-compose.yml`:
+   ```bash
+   cp .env.example .env
+   ```
 
-Or create a `.env` file in the same directory as `docker-compose.yml`:
-```env
-API_KEY=your-secret-api-key-change-this
-```
+2. **Edit `.env` file** and set your values:
+   ```env
+   API_KEY=your-secret-api-key-change-this
+   POSTGRES_USER=tiktok_user
+   POSTGRES_PASSWORD=your-secure-password-here
+   POSTGRES_DB=tiktok_downloader
+   REDIS_URL=redis://redis:6379/0
+   ```
+
+3. **Start services**:
+   ```bash
+   docker-compose up -d
+   ```
+
+**Note:** The `docker-compose.yml` file uses `env_file: .env` to load all environment variables. No hardcoded defaults are used for security.
 
 ## Security Notes
 
