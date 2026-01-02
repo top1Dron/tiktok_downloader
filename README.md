@@ -1,12 +1,15 @@
-# TikTok Downloader
+# TikTok Downloader Backend
 
-A Python-based TikTok video downloader with Android app support.
+A Python-based TikTok video downloader backend with REST API and WebSocket support.
 
 ## Features
 
 - Download TikTok videos by URL
 - REST API server for remote access
-- Android mobile app with APK support
+- WebSocket support for real-time updates
+- Celery for background task processing
+- PostgreSQL for task persistence
+- Redis for message queuing and pub/sub
 
 ## Setup
 
@@ -52,25 +55,31 @@ The server will run on `http://localhost:8000`
 - `GET /` - API information
 - `POST /download` - Download a TikTok video
   - Request body: `{"url": "https://www.tiktok.com/..."}`
-  - Response: `{"success": true, "message": "...", "file_path": "..."}`
+  - Headers: `X-API-Key: your-api-key` (if API_KEY is set)
+  - Response: `{"success": true, "message": "...", "task_id": "..."}`
+- `GET /download/status/{task_id}` - Get download task status
 - `GET /download/file/{file_name}` - Retrieve downloaded video file
+- `WS /ws/{client_id}` - WebSocket endpoint for real-time updates
 
-## Android App
+## Environment Variables
 
-The Android app is located in the `android_app/` directory.
+See [ENV_SETUP.md](./ENV_SETUP.md) for detailed environment variable configuration.
 
-### Building the APK
+Required variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `REDIS_URL` - Redis connection string
 
-1. Open the project in Android Studio
-2. Build > Build Bundle(s) / APK(s) > Build APK(s)
-3. The APK will be generated in `android_app/app/build/outputs/apk/`
+Optional variables:
+- `API_KEY` - API authentication key
+- `RELOAD` - Enable auto-reload for development
 
-### Running the App
+## Docker Deployment
 
-1. Start the Python API server (see Setup above)
-2. Update the API URL in the Android app if needed (default: `http://10.0.2.2:8000` for emulator)
-3. Install the APK on your Android device
-4. Enter a TikTok URL and download
+See [DOCKER.md](./DOCKER.md) for Docker and Docker Compose setup.
+
+**Quick start:**
+1. Copy `.env.example` to `.env` and configure
+2. Run `docker-compose up -d`
 
 ## Usage
 
@@ -84,9 +93,19 @@ file_path = downloader.download("https://www.tiktok.com/@user/video/1234567890")
 print(f"Downloaded to: {file_path}")
 ```
 
+## Deployment
+
+- **Heroku**: See [HEROKU_DEPLOYMENT.md](./HEROKU_DEPLOYMENT.md) for deployment guide
+- **Docker**: See [DOCKER.md](./DOCKER.md) for containerized deployment
+
 ## Requirements
 
-- Python 3.14+
+- Python 3.11+
 - Poetry
-- Android Studio (for building APK)
+- PostgreSQL
+- Redis
+
+## Related Projects
+
+- **Android App**: See `../tiktok_downloader_android_app/` for the mobile client
 
