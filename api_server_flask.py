@@ -16,7 +16,28 @@ import threading
 import time
 
 # Load environment variables from .env file
-load_dotenv()
+# Try multiple possible locations for PythonAnywhere compatibility
+env_loaded = False
+possible_env_paths = [
+    os.path.join(os.path.dirname(__file__), ".env"),  # Same directory as this file
+    os.path.join(os.path.expanduser("~"), ".env"),  # Home directory
+    os.path.join(
+        os.path.expanduser("~"), "tiktok_downloader_backend", ".env"
+    ),  # Project directory in home
+    ".env",  # Current working directory
+]
+
+for env_path in possible_env_paths:
+    if os.path.exists(env_path):
+        load_dotenv(env_path, override=True)
+        env_loaded = True
+        print(f"✅ Loaded .env file from: {env_path}")
+        break
+
+if not env_loaded:
+    # Try default load_dotenv() as fallback
+    load_dotenv()
+    print("⚠️ Using default load_dotenv() - .env file may not be found")
 
 app = Flask(__name__)
 
@@ -25,6 +46,13 @@ CORS(app)
 
 # API Key configuration
 API_KEY = os.getenv("API_KEY", "your-secret-api-key-change-this")
+
+# Debug: Log API key status (without exposing the full key)
+if API_KEY and API_KEY != "your-secret-api-key-change-this":
+    print(f"✅ API_KEY loaded: ***{API_KEY[-4:] if len(API_KEY) > 4 else '****'}")
+else:
+    print("⚠️ WARNING: API_KEY not set or using default value!")
+    print("   Set API_KEY in .env file or environment variable")
 
 # Initialize downloader with temp directory
 downloader = TikTokDownloader(
@@ -74,6 +102,27 @@ def root():
             "message": "TikTok Downloader API",
             "version": "3.0.0",
             "uses": "Direct download (no database, no Celery)",
+        }
+    )
+
+
+@app.route("/debug/config", methods=["GET"])
+def debug_config():
+    """
+    Debug endpoint to check if API_KEY is loaded correctly.
+    Only shows last 4 characters of API_KEY for security.
+    """
+    api_key_status = (
+        "not set"
+        if not API_KEY or API_KEY == "your-secret-api-key-change-this"
+        else f"set (ends with: ...{API_KEY[-4:]})"
+    )
+    return jsonify(
+        {
+            "api_key_status": api_key_status,
+            "api_key_required": API_KEY
+            and API_KEY != "your-secret-api-key-change-this",
+            "env_file_checked": True,
         }
     )
 
