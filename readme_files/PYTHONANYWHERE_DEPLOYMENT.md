@@ -1,16 +1,23 @@
 # Deploying to PythonAnywhere
 
-This guide explains how to deploy the TikTok Downloader backend to PythonAnywhere's free tier.
+⚠️ **IMPORTANT**: PythonAnywhere's **free tier blocks outbound connections** to TikTok. You'll get "Connection refused" errors when trying to download videos.
+
+**Solutions**:
+- **Upgrade to paid plan** ($5/month) - allows outbound connections
+- **Use a different provider** - See `PYTHONANYWHERE_LIMITATIONS.md` for free alternatives (Railway, Render, Fly.io)
+
+This guide explains how to deploy to PythonAnywhere's **paid tier** (which works) or for reference.
 
 ## Prerequisites
 
-1. A PythonAnywhere account (free tier available)
+1. A PythonAnywhere account (**paid tier required** for TikTok downloads)
 2. Your code pushed to a Git repository (GitHub, GitLab, etc.)
 
 ## Important Notes
 
-- PythonAnywhere free tier supports Python 3.13
-- The app uses WSGI wrapper (`wsgi.py`) to run FastAPI
+- PythonAnywhere free tier **blocks TikTok downloads** (outbound connection restrictions)
+- **Paid tier ($5/month)** is required for TikTok video downloading
+- The app uses Flask (`api_server_flask.py`) which is native WSGI
 - No database, Redis, or Celery required (simplified version)
 - Files are stored temporarily and cleaned up after 1 hour
 
