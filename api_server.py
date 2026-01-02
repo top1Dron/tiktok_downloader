@@ -1,109 +1,25 @@
 """
 FastAPI server for TikTok video downloader.
-This server exposes the TikTokDownloader functionality via REST API.
-Uses Celery for background tasks and PostgreSQL for persistence.
+Simplified version for PythonAnywhere free tier (no PostgreSQL, Redis, or Celery).
+Downloads videos synchronously and uses background tasks for cleanup.
 """
 
-from fastapi import (
-    FastAPI,
-    HTTPException,
-    Depends,
-    WebSocket,
-    WebSocketDisconnect,
-)
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
-from sqlalchemy.orm import Session
 import os
 import tempfile
 import urllib.parse
-import uuid
-from datetime import datetime
-import json
-from typing import Dict
-import asyncio
-import redis
-import threading
-from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
-
-# Global event loop reference for thread-safe coroutine execution
-app_event_loop = None
-from config.database import get_db, DownloadTask, Base, engine
-from tasks import download_video_task
-from config.celery_app import celery_app
 from downloaders.tiktok_downloader import TikTokDownloader
-from schemas import DownloadRequest, DownloadResponse, DownloadStatus
+from schemas import DownloadRequest, DownloadResponse
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
-
-# Redis URL for pub/sub
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-
-# Store WebSocket connections
-websocket_connections: Dict[str, WebSocket] = {}
-
-# Redis subscriber thread
-redis_thread = None
-# Global event loop reference for thread-safe coroutine execution
-app_event_loop = None
-
-
-def redis_subscriber_thread():
-    """Background thread to subscribe to Redis and forward messages to WebSocket clients."""
-    global app_event_loop
-    try:
-        redis_client = redis.from_url(REDIS_URL)
-        pubsub = redis_client.pubsub()
-        pubsub.subscribe("task_updates")
-
-        for message in pubsub.listen():
-            if message["type"] == "message":
-                data = message["data"]
-                if isinstance(data, bytes):
-                    data = data.decode("utf-8")
-
-                # Schedule coroutine to send to websockets
-                if app_event_loop and app_event_loop.is_running():
-                    asyncio.run_coroutine_threadsafe(
-                        notify_websockets_from_redis(data), app_event_loop
-                    )
-    except Exception as e:
-        print(f"Redis subscriber failed: {e}")
-
-
-async def notify_websockets_from_redis(message_data: str):
-    """Notify all WebSocket connections with message from Redis."""
-    disconnected = []
-    for client_id, websocket in websocket_connections.items():
-        try:
-            await websocket.send_text(message_data)
-        except:
-            disconnected.append(client_id)
-
-    # Remove disconnected clients
-    for client_id in disconnected:
-        websocket_connections.pop(client_id, None)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Manage application lifespan - start and stop background tasks."""
-    # Startup
-    global redis_thread, app_event_loop
-    app_event_loop = asyncio.get_event_loop()
-    redis_thread = threading.Thread(target=redis_subscriber_thread, daemon=True)
-    redis_thread.start()
-    yield
-    # Shutdown - thread will stop when daemon process exits
-
-
-app = FastAPI(title="TikTok Downloader API", lifespan=lifespan)
+app = FastAPI(title="TikTok Downloader API", version="3.0.0")
 
 # Enable CORS for Android app
 app.add_middleware(
@@ -123,6 +39,9 @@ downloader = TikTokDownloader(
     output_dir=os.path.join(tempfile.gettempdir(), "tiktok_downloads")
 )
 
+# Track files for cleanup: {file_path: created_at}
+files_to_cleanup = {}
+
 
 def verify_api_key(api_key: str = Depends(API_KEY_HEADER)) -> bool:
     """Verify API key."""
@@ -133,137 +52,78 @@ def verify_api_key(api_key: str = Depends(API_KEY_HEADER)) -> bool:
     return True
 
 
-async def notify_websockets(task_id: str, task: DownloadTask):
-    """Notify all WebSocket connections about task update."""
-    message = json.dumps(
-        {
-            "task_id": task_id,
-            "status": task.status,
-            "file_path": task.file_path,
-            "file_name": task.file_name,
-            "error": task.error,
-            "url": task.url,
-        }
-    )
+async def cleanup_file_after_delay(file_path: str):
+    """
+    Background task to delete a file after 1 hour.
 
-    # Send to all connected clients
-    disconnected = []
-    for client_id, websocket in websocket_connections.items():
-        try:
-            await websocket.send_text(message)
-        except:
-            disconnected.append(client_id)
+    Args:
+        file_path: Path to the file to delete
+    """
+    import asyncio
 
-    # Remove disconnected clients
-    for client_id in disconnected:
-        websocket_connections.pop(client_id, None)
+    # Wait 1 hour
+    await asyncio.sleep(3600)  # 3600 seconds = 1 hour
+
+    # Delete the file if it still exists
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Cleaned up temporary file: {file_path}")
+            # Remove from tracking
+            files_to_cleanup.pop(file_path, None)
+    except Exception as e:
+        print(f"Error cleaning up file {file_path}: {e}")
 
 
 @app.get("/")
 async def root():
     return {
         "message": "TikTok Downloader API",
-        "version": "2.0.0",
-        "uses": "Celery + PostgreSQL",
+        "version": "3.0.0",
+        "uses": "Direct download (no database, no Celery)",
     }
 
 
 @app.post(
     "/download", response_model=DownloadResponse, dependencies=[Depends(verify_api_key)]
 )
-async def download_video(request: DownloadRequest, db: Session = Depends(get_db)):
+async def download_video(
+    request: DownloadRequest,
+    background_tasks: BackgroundTasks,
+):
     """
-    Start downloading a TikTok video from the given URL.
-    Returns immediately with a task_id. Use WebSocket or status endpoint to check progress.
+    Download a TikTok video from the given URL synchronously.
+    Returns the file path immediately after download completes.
 
     Args:
         request: DownloadRequest containing the TikTok URL
+        background_tasks: FastAPI background tasks for cleanup
 
     Returns:
-        DownloadResponse with task_id
+        DownloadResponse with file_name and file_path
     """
     try:
         if not request.url or "tiktok.com" not in request.url.lower():
             raise HTTPException(status_code=400, detail="Invalid TikTok URL")
 
-        # Create task in database
-        task_id = str(uuid.uuid4())
-        now = datetime.utcnow()
+        # Download the video synchronously
+        file_path = downloader.download(request.url)
+        file_name = os.path.basename(file_path)
 
-        # Start Celery task
-        celery_result = download_video_task.delay(task_id, request.url)
+        # Track file for cleanup
+        files_to_cleanup[file_path] = datetime.now()
 
-        # Create database record
-        db_task = DownloadTask(
-            task_id=task_id,
-            celery_task_id=celery_result.id,
-            url=request.url,
-            status="pending",
-            created_at=now,
-            updated_at=now,
-        )
-        db.add(db_task)
-        db.commit()
-        db.refresh(db_task)
+        # Schedule cleanup after 1 hour
+        background_tasks.add_task(cleanup_file_after_delay, file_path)
 
         return DownloadResponse(
             success=True,
-            message="Download started",
-            task_id=task_id,
-            celery_task_id=celery_result.id,
+            message="Download completed",
+            file_name=file_name,
+            file_path=file_path,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
-
-
-@app.get("/download/status/{task_id}", response_model=DownloadStatus)
-async def get_download_status(
-    task_id: str,
-    api_key: str = Depends(API_KEY_HEADER),
-    db: Session = Depends(get_db),
-):
-    """Get the status of a download task."""
-    task = db.query(DownloadTask).filter(DownloadTask.task_id == task_id).first()
-
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    # Check Celery task status if available
-    celery_status = None
-    if task.celery_task_id:
-        celery_result = celery_app.AsyncResult(task.celery_task_id)
-        celery_status = celery_result.state
-
-    return DownloadStatus(
-        task_id=task.task_id,
-        celery_task_id=task.celery_task_id,
-        status=task.status,
-        url=task.url,
-        file_path=task.file_path,
-        file_name=task.file_name,
-        error=task.error,
-        created_at=task.created_at.isoformat(),
-        updated_at=task.updated_at.isoformat(),
-        completed_at=task.completed_at.isoformat() if task.completed_at else None,
-    )
-
-
-@app.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    """WebSocket endpoint for real-time download updates."""
-    await websocket.accept()
-    websocket_connections[client_id] = websocket
-
-    try:
-        while True:
-            # Keep connection alive and handle incoming messages
-            data = await websocket.receive_text()
-            # Echo back or handle client messages if needed
-            await websocket.send_text(
-                json.dumps({"type": "pong", "client_id": client_id})
-            )
-    except WebSocketDisconnect:
-        websocket_connections.pop(client_id, None)
 
 
 @app.get("/download/file/{file_name:path}")
