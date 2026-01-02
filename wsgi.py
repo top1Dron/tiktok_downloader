@@ -1,10 +1,9 @@
 """
 WSGI entry point for PythonAnywhere deployment.
-Wraps the FastAPI ASGI application in a WSGI adapter.
+Uses Flask app which is native WSGI (no adapter needed).
 """
 
-from asgiref.wsgi import WsgiToAsgi
-from api_server import app
+from api_server_flask import app
 
-# Wrap FastAPI (ASGI) app in WSGI adapter for PythonAnywhere
-application = WsgiToAsgi(app)
+# Flask app is already WSGI-compatible
+application = app
