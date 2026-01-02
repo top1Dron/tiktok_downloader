@@ -38,7 +38,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: compose/Dockerfile
     container_name: tiktok-downloader-api
     env_file:
       - .env
@@ -68,7 +68,7 @@ services:
   celery:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: compose/Dockerfile
     container_name: tiktok-downloader-celery
     env_file:
       - .env
@@ -93,7 +93,7 @@ services:
   celery-beat:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: compose/Dockerfile
     container_name: tiktok-downloader-celery-beat
     env_file:
       - .env

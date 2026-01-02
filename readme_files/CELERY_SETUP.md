@@ -130,7 +130,7 @@ Add to `docker-compose.yml`:
 flower:
   build:
     context: .
-    dockerfile: Dockerfile
+    dockerfile: compose/Dockerfile
   command: celery -A config.celery_app flower --port=5555
   ports:
     - "5555:5555"

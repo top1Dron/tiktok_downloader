@@ -11,6 +11,65 @@ A Python-based TikTok video downloader backend with REST API and WebSocket suppo
 - PostgreSQL for task persistence
 - Redis for message queuing and pub/sub
 
+## Project Structure
+
+```
+tiktok_downloader_backend/
+├── .env.example              # Environment variables template
+├── .gitignore                # Git ignore rules
+├── .dockerignore             # Docker ignore rules
+├── docker-compose.yml        # Docker Compose configuration
+├── Procfile                  # Heroku process definitions
+├── runtime.txt               # Python version for Heroku
+├── alembic.ini               # Alembic configuration
+├── pyproject.toml            # Poetry dependencies (source of truth)
+├── poetry.lock               # Poetry lock file
+├── README.md                 # This file
+│
+├── api_server.py             # FastAPI application entry point
+├── tasks.py                  # Celery background tasks
+├── schemas.py                # Pydantic models/schemas
+│
+├── compose/                  # Docker configuration
+│   └── Dockerfile            # Docker image definition
+│
+├── examples/                 # Example files
+│   ├── example.py            # Usage example
+│   ├── websocket_client_example.py      # Python WebSocket client example
+│   └── websocket_client_javascript.html # JavaScript WebSocket client example
+│
+├── config/                   # Configuration modules
+│   ├── __init__.py
+│   ├── celery_app.py        # Celery application configuration
+│   └── database.py           # Database models and session management
+│
+├── downloaders/              # Downloader implementations
+│   ├── __init__.py
+│   ├── downloader.py         # Base downloader interface
+│   └── tiktok_downloader.py # TikTok-specific downloader
+│
+├── alembic/                  # Database migrations
+│   ├── env.py
+│   └── script.py.mako
+│
+├── bash_scripts/             # Shell scripts
+│   ├── setup.sh             # Project setup script
+│   ├── run_server.sh        # Server startup script
+│   └── generate_requirements.sh  # Generate requirements.txt from Poetry
+│
+├── readme_files/             # Documentation
+│   ├── API_USAGE.md         # API usage guide
+│   ├── CELERY_SETUP.md      # Celery setup instructions
+│   ├── DOCKER.md            # Docker deployment guide
+│   ├── ENV_SETUP.md         # Environment variables setup
+│   ├── HEROKU_DEPLOYMENT.md # Heroku deployment guide
+│   ├── HEROKU_QUICK_START.md # Heroku quick start
+│   ├── QUICK_START.md       # Quick start guide
+│   ├── RESTART_SERVER.md    # Server restart guide
+│   └── WEBSOCKET_USAGE.md   # WebSocket usage guide
+│
+```
+
 ## Setup
 
 ### Python Backend

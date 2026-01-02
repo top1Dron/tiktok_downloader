@@ -43,21 +43,21 @@ You can send any text message to keep the connection alive. The server will resp
 
 ### Python Client
 
-Use the provided `websocket_client_example.py`:
+Use the provided `examples/websocket_client_example.py`:
 
 ```bash
 # Basic usage
-python websocket_client_example.py
+python examples/websocket_client_example.py
 
 # With custom server and client ID
-python websocket_client_example.py ws://localhost:8000 my_client_1
+python examples/websocket_client_example.py ws://localhost:8000 my_client_1
 ```
 
 Or use it programmatically:
 
 ```python
 import asyncio
-from websocket_client_example import connect_websocket
+from examples.websocket_client_example import connect_websocket
 
 # Connect and listen for updates
 asyncio.run(connect_websocket("ws://localhost:8000", "my_client_1"))
@@ -65,7 +65,7 @@ asyncio.run(connect_websocket("ws://localhost:8000", "my_client_1"))
 
 ### JavaScript/Web Client
 
-Open the provided `websocket_client_javascript.html` file in a web browser, or use the code in your web application:
+Open the provided `examples/websocket_client_javascript.html` file in a web browser, or use the code in your web application:
 
 ```javascript
 const ws = new WebSocket('ws://localhost:8000/ws/web_client_1');
@@ -234,7 +234,7 @@ Each client should use a unique `client_id`. The server maintains separate conne
    ```
 
 2. **Open the HTML test client:**
-   - Open `websocket_client_javascript.html` in a browser
+   - Open `examples/websocket_client_javascript.html` in a browser
    - Enter server URL and client ID
    - Click "Connect"
 
