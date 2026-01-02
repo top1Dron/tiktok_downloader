@@ -80,21 +80,38 @@ The `DATABASE_URL` and `REDIS_URL` are automatically set by Heroku addons, so yo
 
 ## Step 7: Prepare Your Code
 
-### 7.1 Update Database URL Handling
+### 7.1 Generate requirements.txt from Poetry
 
-Heroku's PostgreSQL uses `postgres://` instead of `postgresql://`. Update `database.py` to handle both:
+Heroku requires a `requirements.txt` file. Generate it from your `pyproject.toml`:
 
-```python
-# In database.py, after getting DATABASE_URL:
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+**Option 1: Using the provided script (Recommended):**
+```bash
+./bash_scripts/generate_requirements.sh
 ```
 
-### 7.2 Update Redis URL Handling
+**Option 2: Manual generation:**
+```bash
+# Install Poetry if not already installed
+pip install poetry
+
+# Install export plugin (if needed)
+poetry self add poetry-plugin-export
+
+# Generate requirements.txt from pyproject.toml
+poetry export -f requirements.txt --output requirements.txt --without-hashes
+```
+
+**Note:** The `requirements.txt` file is generated from Poetry and should be committed to git. Regenerate it whenever you update dependencies in `pyproject.toml`.
+
+### 7.2 Update Database URL Handling
+
+Heroku's PostgreSQL uses `postgres://` instead of `postgresql://`. The `config/database.py` file already handles this conversion automatically.
+
+### 7.3 Update Redis URL Handling
 
 Heroku Redis may use `rediss://` (SSL) or `redis://`. Your code should handle both.
 
-### 7.3 Ensure Files Are Committed
+### 7.4 Ensure Files Are Committed
 
 ```bash
 git add .
@@ -112,10 +129,12 @@ git push heroku master
 ```
 
 Heroku will:
-1. Detect Python from `requirements.txt`
-2. Install dependencies
+1. Detect Python from `runtime.txt` and `requirements.txt`
+2. Install dependencies from `requirements.txt`
 3. Run database migrations (if configured)
 4. Start your dynos
+
+**Note:** Make sure you've generated `requirements.txt` from Poetry (see Step 7.1) before pushing to Heroku.
 
 ## Step 9: Run Database Migrations
 
@@ -127,7 +146,7 @@ heroku run alembic upgrade head
 Or if you need to create tables manually:
 
 ```bash
-heroku run python -c "from database import Base, engine; Base.metadata.create_all(bind=engine)"
+heroku run python -c "from config.database import Base, engine; Base.metadata.create_all(bind=engine)"
 ```
 
 ## Step 10: Scale Dynos
@@ -289,13 +308,20 @@ Your project should have:
 ```
 tiktok_downloader_backend/
 ├── Procfile          # Process definitions
-├── requirements.txt  # Python dependencies
+├── pyproject.toml    # Poetry dependencies (source of truth)
+├── requirements.txt  # Generated from Poetry (for Heroku)
 ├── runtime.txt       # Python version
 ├── api_server.py     # Main API server
-├── celery_app.py     # Celery configuration
+├── config/
+│   ├── celery_app.py     # Celery configuration
+│   └── database.py       # Database models
 ├── tasks.py          # Celery tasks
-├── database.py       # Database models
 └── ...              # Other files
+```
+
+**Important:** `requirements.txt` should be generated from `pyproject.toml` using:
+```bash
+poetry export -f requirements.txt --output requirements.txt --without-hashes
 ```
 
 ## Quick Deploy Checklist

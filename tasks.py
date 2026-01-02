@@ -1,12 +1,12 @@
 """Celery tasks for background processing."""
 
-from celery_app import celery_app
+from config.celery_app import celery_app
 from downloaders.tiktok_downloader import TikTokDownloader
 import os
 import tempfile
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from database import SessionLocal, DownloadTask
+from config.database import SessionLocal, DownloadTask
 import traceback
 import json
 import redis

@@ -47,7 +47,7 @@ docker-compose up -d postgres redis
 
 ```bash
 # Create tables (using SQLAlchemy)
-poetry run python -c "from database import Base, engine; Base.metadata.create_all(bind=engine)"
+poetry run python -c "from config.database import Base, engine; Base.metadata.create_all(bind=engine)"
 
 # Or use Alembic migrations
 poetry run alembic upgrade head
@@ -62,12 +62,12 @@ poetry run python api_server.py
 
 **Terminal 2 - Celery Worker:**
 ```bash
-poetry run celery -A celery_app worker --loglevel=info
+poetry run celery -A config.celery_app worker --loglevel=info
 ```
 
 **Terminal 3 - Celery Beat (for periodic tasks like file cleanup):**
 ```bash
-poetry run celery -A celery_app beat --loglevel=info
+poetry run celery -A config.celery_app beat --loglevel=info
 ```
 
 **Note:** Celery Beat is required for automatic cleanup of old temporary files. It runs the cleanup task every 15 minutes to delete files older than 1 hour.
@@ -131,7 +131,7 @@ flower:
   build:
     context: .
     dockerfile: Dockerfile
-  command: celery -A celery_app flower --port=5555
+  command: celery -A config.celery_app flower --port=5555
   ports:
     - "5555:5555"
   environment:
@@ -162,7 +162,7 @@ You can also trigger cleanup manually:
 
 ```bash
 # Using Celery CLI
-poetry run celery -A celery_app call tasks.cleanup_old_files
+poetry run celery -A config.celery_app call tasks.cleanup_old_files
 
 # Or using Python
 poetry run python -c "from tasks import cleanup_old_files; cleanup_old_files()"
@@ -174,7 +174,7 @@ Check the Celery Beat logs to see cleanup activity:
 
 ```bash
 # Local
-poetry run celery -A celery_app beat --loglevel=info
+poetry run celery -A config.celery_app beat --loglevel=info
 
 # Docker
 docker-compose logs -f celery-beat
@@ -222,7 +222,7 @@ redis-cli ping
 1. Check worker logs: `docker-compose logs celery`
 2. Verify Redis connection
 3. Verify database connection
-4. Check task is registered: `celery -A celery_app inspect registered`
+4. Check task is registered: `celery -A config.celery_app inspect registered`
 
 ## Production Considerations
 

@@ -10,7 +10,7 @@
 
 1. **Install Python dependencies:**
    ```bash
-   ./setup.sh
+   ./bash_scripts/setup.sh
    ```
    Or manually:
    ```bash

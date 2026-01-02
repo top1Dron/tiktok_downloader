@@ -30,9 +30,9 @@ from dotenv import load_dotenv
 
 # Global event loop reference for thread-safe coroutine execution
 app_event_loop = None
-from database import get_db, DownloadTask, Base, engine
+from config.database import get_db, DownloadTask, Base, engine
 from tasks import download_video_task
-from celery_app import celery_app
+from config.celery_app import celery_app
 from downloaders.tiktok_downloader import TikTokDownloader
 from schemas import DownloadRequest, DownloadResponse, DownloadStatus
 

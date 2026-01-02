@@ -100,7 +100,7 @@ print(f"Downloaded to: {file_path}")
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.14+
 - Poetry
 - PostgreSQL
 - Redis

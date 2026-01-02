@@ -22,18 +22,21 @@ heroku addons:create heroku-redis:mini
 # 4. Set API key
 heroku config:set API_KEY=your-secret-api-key-change-this
 
-# 5. Deploy
+# 5. Generate requirements.txt from Poetry (required for Heroku)
+./bash_scripts/generate_requirements.sh
+
+# 6. Deploy
 git add .
 git commit -m "Deploy to Heroku"
 git push heroku main
 
-# 6. Setup database
-heroku run python -c "from database import Base, engine; Base.metadata.create_all(bind=engine)"
+# 7. Setup database
+heroku run python -c "from config.database import Base, engine; Base.metadata.create_all(bind=engine)"
 
-# 7. Start dynos
+# 8. Start dynos
 heroku ps:scale web=1 worker=1
 
-# 8. Test
+# 9. Test
 curl https://your-app-name.herokuapp.com/
 ```
 
