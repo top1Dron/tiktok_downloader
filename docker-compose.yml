@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tiktok-downloader-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tiktok_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tiktok_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-tiktok_downloader}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tiktok_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tiktok-downloader-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tiktok-downloader-api
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=${API_KEY:-your-secret-api-key-change-this}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-tiktok_user}:${POSTGRES_PASSWORD:-tiktok_pass}@postgres:5432/${POSTGRES_DB:-tiktok_downloader}
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./downloads:/app/downloads
+      - ./tiktok_downloads:/tmp/tiktok_downloads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tiktok-downloader-celery
+    command: celery -A celery_app worker --loglevel=info
+    environment:
+      - API_KEY=${API_KEY:-your-secret-api-key-change-this}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-tiktok_user}:${POSTGRES_PASSWORD:-tiktok_pass}@postgres:5432/${POSTGRES_DB:-tiktok_downloader}
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./downloads:/app/downloads
+      - ./tiktok_downloads:/tmp/tiktok_downloads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tiktok-downloader-celery-beat
+    command: celery -A celery_app beat --loglevel=info
+    environment:
+      - API_KEY=${API_KEY:-your-secret-api-key-change-this}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-tiktok_user}:${POSTGRES_PASSWORD:-tiktok_pass}@postgres:5432/${POSTGRES_DB:-tiktok_downloader}
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./downloads:/app/downloads
+      - ./tiktok_downloads:/tmp/tiktok_downloads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

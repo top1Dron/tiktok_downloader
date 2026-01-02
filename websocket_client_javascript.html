@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Downloader - WebSocket Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .disconnect {
+            background-color: #f44336;
+        }
+        .disconnect:hover {
+            background-color: #da190b;
+        }
+        #status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        #messages {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+        }
+        .message-header {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .message-content {
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            white-space: pre-wrap;
+        }
+        .error {
+            border-left-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 TikTok Downloader WebSocket Client</h1>
+        
+        <div class="input-group">
+            <label for="serverUrl">Server URL:</label>
+            <input type="text" id="serverUrl" value="ws://localhost:8000" placeholder="ws://localhost:8000">
+        </div>
+        
+        <div class="input-group">
+            <label for="clientId">Client ID:</label>
+            <input type="text" id="clientId" value="web_client_1" placeholder="web_client_1">
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" class="disconnect" disabled>Disconnect</button>
+            <button onclick="clearMessages()">Clear Messages</button>
+        </div>
+        
+        <div id="status" class="disconnected">Disconnected</div>
+        
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let clientId = 'web_client_1';
+
+        function updateStatus(connected) {
+            const statusEl = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (connected) {
+                statusEl.textContent = '✅ Connected';
+                statusEl.className = 'connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                statusEl.textContent = '❌ Disconnected';
+                statusEl.className = 'disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        function addMessage(title, content, isError = false) {
+            const messagesEl = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message' + (isError ? ' error' : '');
+            
+            const headerEl = document.createElement('div');
+            headerEl.className = 'message-header';
+            headerEl.textContent = title;
+            
+            const contentEl = document.createElement('div');
+            contentEl.className = 'message-content';
+            contentEl.textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+            
+            messageEl.appendChild(headerEl);
+            messageEl.appendChild(contentEl);
+            messagesEl.appendChild(messageEl);
+            
+            // Auto-scroll to bottom
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            clientId = document.getElementById('clientId').value;
+            
+            if (!serverUrl || !clientId) {
+                alert('Please enter both server URL and client ID');
+                return;
+            }
+            
+            // Convert http/https to ws/wss
+            let wsUrl = serverUrl;
+            if (wsUrl.startsWith('http://')) {
+                wsUrl = wsUrl.replace('http://', 'ws://');
+            } else if (wsUrl.startsWith('https://')) {
+                wsUrl = wsUrl.replace('https://', 'wss://');
+            } else if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) {
+                wsUrl = 'ws://' + wsUrl;
+            }
+            
+            const fullUrl = `${wsUrl}/ws/${clientId}`;
+            
+            try {
+                ws = new WebSocket(fullUrl);
+                
+                ws.onopen = function(event) {
+                    updateStatus(true);
+                    addMessage('Connection', `Connected to ${fullUrl}`);
+                    
+                    // Send initial ping
+                    ws.send(JSON.stringify({type: 'ping'}));
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'pong') {
+                            addMessage('Pong', `Received pong from server (Client ID: ${data.client_id})`);
+                        } else {
+                            // Download update message
+                            addMessage('Download Update', {
+                                task_id: data.task_id,
+                                status: data.status,
+                                file_name: data.file_name,
+                                file_path: data.file_path,
+                                url: data.url,
+                                error: data.error
+                            });
+                        }
+                    } catch (e) {
+                        addMessage('Message (Raw)', event.data);
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    addMessage('Error', `WebSocket error: ${error}`, true);
+                };
+                
+                ws.onclose = function(event) {
+                    updateStatus(false);
+                    addMessage('Connection', `Disconnected (Code: ${event.code}, Reason: ${event.reason || 'N/A'})`);
+                    ws = null;
+                };
+                
+            } catch (error) {
+                addMessage('Error', `Failed to connect: ${error.message}`, true);
+                updateStatus(false);
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        // Allow Enter key to connect
+        document.getElementById('serverUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') connect();
+        });
+        document.getElementById('clientId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') connect();
+        });
+    </script>
+</body>
+</html>
+
