@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "downloaders"}]
 
 [tool.poetry.dependencies]
-python = "^3.14"
+python = "^3.13"
 yt-dlp = "^2024.1.0"
 fastapi = "^0.109.0"
 uvicorn = {extras = ["standard"], version = "^0.27.0"}
