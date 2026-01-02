@@ -28,3 +28,22 @@ class DownloadResponse(BaseModel):
             }
         },
     }
+
+
+class HealthResponse(BaseModel):
+    """Response schema for health check."""
+
+    message: str
+    version: str
+    uses: str
+
+    model_config = {
+        "json_encoders": {str: str},
+        "json_schema_extra": {
+            "example": {
+                "message": "TikTok Downloader API",
+                "version": "3.0.0",
+                "uses": "Direct download (no database, no Celery)",
+            }
+        },
+    }

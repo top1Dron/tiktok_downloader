@@ -14,7 +14,7 @@ import urllib.parse
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from downloaders.tiktok_downloader import TikTokDownloader
-from schemas import DownloadRequest, DownloadResponse
+from schemas import DownloadRequest, DownloadResponse, HealthResponse
 
 # Load environment variables from .env file
 load_dotenv()
@@ -75,13 +75,13 @@ async def cleanup_file_after_delay(file_path: str):
         print(f"Error cleaning up file {file_path}: {e}")
 
 
-@app.get("/")
+@app.get("/health", response_model=HealthResponse)
 async def root():
-    return {
-        "message": "TikTok Downloader API",
-        "version": "3.0.0",
-        "uses": "Direct download (no database, no Celery)",
-    }
+    return HealthResponse(
+        message="TikTok Downloader API",
+        version="3.0.0",
+        uses="Direct download (no database, no Celery)",
+    )
 
 
 @app.post(

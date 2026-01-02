@@ -7,12 +7,21 @@ readme = "README.md"
 packages = [{include = "downloaders"}]
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = "^3.14"
 yt-dlp = "^2024.1.0"
-flask = "^3.0.0"
-flask-cors = "^4.0.0"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
 requests = "^2.31.0"
+websockets = "^12.0"
+python-multipart = "^0.0.6"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 python-dotenv = "^1.0.0"
+celery = {extras = ["redis"], version = "^5.3.4"}
+flower = "^2.0.1"
+sqlalchemy = "^2.0.25"
+psycopg2-binary = "^2.9.9"
+alembic = "^1.13.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
@@ -22,4 +31,3 @@ flake8 = "^7.0.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
