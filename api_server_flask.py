@@ -11,7 +11,7 @@ import tempfile
 import urllib.parse
 from datetime import datetime
 from dotenv import load_dotenv
-from downloaders.tiktok_downloader import TikTokDownloader
+from downloaders.tiktok_downloader import TikTokDownloader, DownloadError
 import threading
 import time
 
@@ -112,13 +112,16 @@ def health():
     Health check endpoint for backend synchronization.
     Returns 200 if the server is awake and ready.
     """
-    return jsonify(
-        {
-            "message": "TikTok Downloader API",
-            "version": "3.0.0",
-            "uses": "Direct download (no database, no Celery)",
-        }
-    ), 200
+    return (
+        jsonify(
+            {
+                "message": "TikTok Downloader API",
+                "version": "3.0.0",
+                "uses": "Direct download (no database, no Celery)",
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/debug/config", methods=["GET"])
@@ -193,7 +196,11 @@ def download_video():
                 "file_path": file_path,
             }
         )
+    except DownloadError as e:
+        # Download errors (video not available, connection issues, etc.) - return 400
+        return jsonify({"detail": str(e)}), 400
     except Exception as e:
+        # Unexpected errors - return 500
         return jsonify({"detail": f"Download failed: {str(e)}"}), 500
 
 

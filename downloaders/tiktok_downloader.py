@@ -5,6 +5,12 @@ from .downloader import Downloader
 import yt_dlp
 
 
+class DownloadError(Exception):
+    """Custom exception for download errors that should return 400 status code."""
+
+    pass
+
+
 class TikTokDownloader(Downloader):
     """Class for downloading a TikTok video from a given URL."""
 
@@ -70,12 +76,26 @@ class TikTokDownloader(Downloader):
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Extract info to get the filename
-                info = ydl.extract_info(url, download=False)
-                filename = ydl.prepare_filename(info)
+                try:
+                    # Extract info to get the filename
+                    info = ydl.extract_info(url, download=False)
+                    filename = ydl.prepare_filename(info)
+                except yt_dlp.DownloadError as e:
+                    # Video not available, invalid URL, or extraction failed
+                    raise DownloadError(f"Video not available or invalid URL: {str(e)}")
+                except Exception as e:
+                    # Other extraction errors (connection issues, etc.)
+                    raise DownloadError(f"Failed to extract video info: {str(e)}")
 
-                # Download the video
-                ydl.download([url])
+                try:
+                    # Download the video
+                    ydl.download([url])
+                except yt_dlp.DownloadError as e:
+                    # Download failed (video unavailable, connection issues, etc.)
+                    raise DownloadError(f"Failed to download video: {str(e)}")
+                except Exception as e:
+                    # Other download errors
+                    raise DownloadError(f"Download error: {str(e)}")
 
                 # Return the path to the downloaded file
                 if os.path.exists(filename):
@@ -87,9 +107,13 @@ class TikTokDownloader(Downloader):
                         potential_file = base_name + ext
                         if os.path.exists(potential_file):
                             return potential_file
-                    raise FileNotFoundError(f"Downloaded file not found: {filename}")
+                    raise DownloadError(f"Downloaded file not found: {filename}")
+        except DownloadError:
+            # Re-raise DownloadError as-is (will be caught by Flask and return 400)
+            raise
         except Exception as e:
-            raise Exception(f"Failed to download TikTok video: {str(e)}")
+            # Unexpected errors - still return as DownloadError for 400 status
+            raise DownloadError(f"Failed to download TikTok video: {str(e)}")
         finally:
             # Restore original proxy environment variables
             for var, value in original_proxy_vars.items():

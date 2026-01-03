@@ -13,7 +13,7 @@ import tempfile
 import urllib.parse
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from downloaders.tiktok_downloader import TikTokDownloader
+from downloaders.tiktok_downloader import TikTokDownloader, DownloadError
 from schemas import DownloadRequest, DownloadResponse, HealthResponse
 
 # Load environment variables from .env file
@@ -122,7 +122,11 @@ async def download_video(
             file_name=file_name,
             file_path=file_path,
         )
+    except DownloadError as e:
+        # Download errors (video not available, connection issues, etc.) - return 400
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        # Unexpected errors - return 500
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
 
