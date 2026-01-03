@@ -106,6 +106,21 @@ def root():
     )
 
 
+@app.route("/health", methods=["GET"])
+def health():
+    """
+    Health check endpoint for backend synchronization.
+    Returns 200 if the server is awake and ready.
+    """
+    return jsonify(
+        {
+            "message": "TikTok Downloader API",
+            "version": "3.0.0",
+            "uses": "Direct download (no database, no Celery)",
+        }
+    ), 200
+
+
 @app.route("/debug/config", methods=["GET"])
 def debug_config():
     """
