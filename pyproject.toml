@@ -8,7 +8,7 @@ packages = [{include = "downloaders"}]
 
 [tool.poetry.dependencies]
 python = "^3.13"
-yt-dlp = "^2024.1.0"
+yt-dlp = "^2026.1.29"
 fastapi = "^0.109.0"
 uvicorn = {extras = ["standard"], version = "^0.27.0"}
 requests = "^2.31.0"
